@@ -103,7 +103,6 @@ class Monitor():
     def wants_enter_car(self, direction: int) -> None:
         self.mutex.acquire()
         self.patata.value += 1
-        #### código
         if direction == 1:
             self.c_waiting_S.value += 1
         else:
@@ -123,8 +122,7 @@ class Monitor():
     def leaves_car(self, direction: int) -> None:
         self.mutex.acquire() 
         self.patata.value += 1
-        #### código
-        
+
         # aqui va el notify
         
         # Idea: primero avisamos a los peatones y luego a un coche.
@@ -144,7 +142,6 @@ class Monitor():
     def wants_enter_pedestrian(self) -> None:
         self.mutex.acquire()
         self.patata.value += 1
-        #### código
         self.p_waiting.value += 1
         # aqui va la condicion de wait
         self.no_coches.wait_for(self.puente_vacio_or_no_c)
