@@ -75,20 +75,8 @@ class Monitor():
         self.no_peatones = Condition(self.mutex)
         self.no_coches   = Condition(self.mutex)
 
-    #  c_waiting_N >= 1 and last_not_N -> bloquear_entrada
-    #  c_waiting_S >= 1 and last_not_S -> bloquear_entrada
-    #  p_waiting   >= 1 and last_not_P -> bloquear_entrada
-    def last_not_N(self):
-        return self.c_S.value >= 1 or self.p.value    >= 1
-    
-    def last_not_S(self):
-        return self.c_N.value  >= 1 or self.p.value    >= 1
-
-    def last_not_C(self):
-        return self.c_S.value >= 1 or self.c_N.value >= 1
-
-    def last_not_P(self):
-        return self.c_N.value  >= 1 or self.c_S.value  >= 1 
+    #  Puente_vacio or  no_peatones -> abir_coche(1)  -> abrir peatones
+    #  Puente_vacio or  no_coches   -> abrir_peatones -> abrir_coche(1)
     
     def puente_vacio_or_no_p(self):
         return self.puente_vacio or self.p == 0
@@ -96,7 +84,7 @@ class Monitor():
     def puente_vacio_or_no_c(self):
         return self.puente_vacio or (self.c_N + self.c_S) == 0
 
-    # nadie_dentro -> abrir_puente
+    # Nadie_dentro -> abrir_puente
     def puente_vacio(self):
         return self.c_N.value + self.c_S.value + self.p.value == 0
     
@@ -108,9 +96,9 @@ class Monitor():
         else:
             self.c_waiting_N.value += 1
         
-        # aqui va la condicion de wait
+        # Condicion de entrada
         self.no_peatones.wait_for(self.puente_vacio_or_no_p)
-        # aqui se ha cumplido -> estamos dentro de puente
+        # Condicion cierta -> dentro de puente
         if direction == 1:
             self.c_waiting_S.value -= 1
             self.c_S.value         += 1
@@ -122,30 +110,27 @@ class Monitor():
     def leaves_car(self, direction: int) -> None:
         self.mutex.acquire() 
         self.patata.value += 1
-
-        # aqui va el notify
         
+        # Salimos
+        if direction == 1:
+            self.c_S.value -= 1
+        else:
+            self.c_N.value -= 1
         # Idea: primero avisamos a los peatones y luego a un coche.
         # Avisamos al coche para evitar situaciones en las que no quedan
         # Peatones entonces no puden entrar mas coches
         self.no_coches.notify_all()
         self.no_peatones.notify(1)
-        
-        # aqui termina el notify -> ha salido
-        if direction == 1:
-            self.c_S.value -= 1
-        else:
-            self.c_N.value -= 1
-        
+
         self.mutex.release()
 
     def wants_enter_pedestrian(self) -> None:
         self.mutex.acquire()
         self.patata.value += 1
         self.p_waiting.value += 1
-        # aqui va la condicion de wait
+        # Condicion de entrada
         self.no_coches.wait_for(self.puente_vacio_or_no_c)
-        # aqui se ha cumplido -> estamos dentro de puente
+        # Condicion cierta -> dentro de puente
         self.p_waiting.value -= 1
         self.p.value  += 1
         self.mutex.release()
@@ -154,14 +139,13 @@ class Monitor():
         self.mutex.acquire()
         self.patata.value += 1
 
-        # aqui va el notify
+        # Salimos
+        self.p.value -= 1
+        # Avisamos de que pueden entrar
 
         self.no_peatones.notify(1)
         self.no_coches.notify_all()
-        
 
-        # aqui termina el notify -> ha salido
-        self.p.value -= 1
         self.mutex.release()
 
     def __repr__(self) -> str:
